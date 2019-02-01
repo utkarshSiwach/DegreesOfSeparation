@@ -15,12 +15,16 @@ int main(int argc, char *argv[])
    }
 
    string playedinFile(argv[1]);
-   // Create dist calculator
+   //string playedinFile("/Users/utkarshsiwach/Documents/fde/fde18-bonusproject3/test/SimpleGraph.txt");
+   //string playedinFile("/Users/utkarshsiwach/Downloads/playedin.csv");
+    // Create dist calculator
    DistCalculator dc(playedinFile);
 
    // read queries from standard in and return distances
-   DistCalculator::Node a, b;
-   while (cin >> a && cin >> b) cout << dc.dist(a, b) << "\n";
+   //DistCalculator::Node a, b;
+    unsigned a,b;
+    //cout<<"\nEnter 2 nums:";
+    while (cin >> a && cin >> b) cout << dc.dist(a, b) << "\n";
 
    // flush output buffer
    cout.flush();
