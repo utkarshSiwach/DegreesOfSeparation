@@ -42,9 +42,9 @@ DistCalculator::DistCalculator(std::string edgeListFile) {
     
     auto cLine = findSymbol<'\n'>(fileBegin, fileEnd)+1;    // skip the header
     
-    unsigned maxM=0,maxA=0,temp;
-    actors.rehash(sizeof(unsigned)*2000000);
-    movies.rehash(sizeof(unsigned)*1200000);
+    actors.resize(NUM_ACTORS);
+    movies.resize(NUM_MOVIES);
+    
     for(auto iter = cLine; iter < fileEnd;) {
         auto comma = findSymbol<','>(iter, fileEnd);
         if(comma>=fileEnd) break;
@@ -60,31 +60,10 @@ DistCalculator::DistCalculator(std::string edgeListFile) {
         
         iter++;
         
-        // start filling out 2 hash tables, one for actors->movies, another for movies->actors
+        // start filling out 2 tables, one for actors->movies, another for movies->actors
+        actors[actorNum].push_back(movieNum);
+        movies[movieNum].push_back(actorNum);
         
-        auto actorIter = actors.find(actorNum);
-        if(actorIter!=actors.end()) {
-            actorIter->second.insert(movieNum);
-            temp = actorIter->second.size();
-            if(temp>maxM) maxM = temp;
-        }
-        else {
-            unordered_set<unsigned> tempMovies;
-            tempMovies.insert(movieNum);
-            actors.insert({actorNum,tempMovies});
-        }
-        
-        auto movieIter = movies.find(movieNum);
-        if(movieIter!=movies.end()) {
-            movieIter->second.insert(actorNum);
-            temp = movieIter->second.size();
-            if(temp>maxA) maxA = temp;
-        }
-        else {
-            unordered_set<unsigned> tempActors;
-            tempActors.insert(actorNum);
-            movies.insert({movieNum,tempActors});
-        }
     }
     //cout<<"maxM "<<maxM<<", maxA "<<maxA<<", sizeA "<<actors.size()<<", sizeM "<<movies.size();
 }
@@ -95,51 +74,49 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     if(a==b)
         return 0;
     
-    auto aPos = actors.find(b);
-    if(aPos==actors.end())
+    if(actors[b][0]==0)
         return -1;
-    aPos = actors.find(a);
-    if(aPos==actors.end())
+    if(actors[a][0]==0)
         return -1;
-    vector<unsigned> queue;
-    unordered_set<unsigned> q2;
-    queue.reserve(sizeof(unsigned)*2000000);
-    q2.reserve(sizeof(unsigned)*2000000);
+    
+    uint64_t isDiscovered[1<<15];
+    
+    unsigned queue[NUM_ACTORS*2];
     unsigned currPos = 0;
-    q2.insert(a);
-    queue.push_back(a);
-    queue.push_back(0);
+    unsigned queueSize=0;
+    queue[queueSize]=a;
+    queueSize++;
+    queue[queueSize]=NUM_ACTORS;
+    queueSize++;
     unsigned numOfZeroes = 1;
     bool found=false;
+    //vector<unsigned>::iterator actor,aMovie;
     do{
-        found = findNeighbors(queue.at(currPos),b, q2, queue);
+        for(auto aMovie=actors[queue[currPos]].begin();aMovie!=actors[queue[currPos]].end();aMovie++) {
+            for(auto actor=movies[*aMovie].begin();actor!=movies[*aMovie].end();actor++){
+                if(*actor == b) {
+                    found = true;
+                    goto aa;
+                }
+                if((isDiscovered[(*actor)>>6] & 1<<(*actor)&63) == 0){
+                    isDiscovered[(*actor)>>6] |= 1<<(*actor)&63;
+                    queue[queueSize]= *actor;
+                    queueSize++;
+                }
+            }
+        }
+    aa:
         if(found) {
             return numOfZeroes;
         }
-        if(queue.at(currPos+1)==0 && queue.size()>currPos+2) {
-            queue.push_back(0);
+        if(queue[currPos+1]==NUM_ACTORS && queueSize>currPos+2) {
+            queue[queueSize]=NUM_ACTORS;
+            queueSize++;
             numOfZeroes++;
         }
-        if(queue.at(currPos+1)==0) currPos+=2;
+        if(queue[currPos+1]==NUM_ACTORS) currPos+=2;
         else currPos++;
-    }while(currPos<queue.size());
+    }while(currPos<queueSize);
     
     return -1;
-}
-
-bool DistCalculator::findNeighbors(unsigned a, unsigned target, unordered_set<unsigned>& q2,vector<unsigned>& queue) {
-    auto aPos = actors.find(a);
-    unordered_set<unsigned> allNeighbors;
-    for(auto aMovie = aPos->second.begin();aMovie!=aPos->second.end();aMovie++) {
-        auto actorSet=movies.find(*aMovie)->second;
-        for(auto actor=actorSet.begin();actor!=actorSet.end();actor++){
-            if(*actor == target)
-                return true;
-            if(q2.find(*actor)==q2.end()){
-                q2.insert(*actor);
-                queue.push_back(*actor);
-            }
-        }
-    }
-    return false;
 }
