@@ -7,6 +7,10 @@
 #include "DistCalculator.hpp"
 
 //---------------------------------------------------------------------------
+void thread_task( DistCalculator &dc){
+    dc.dist(1,6);
+}
+
 int main(int argc, char *argv[])
 {
    using namespace std;
@@ -28,16 +32,20 @@ int main(int argc, char *argv[])
     vector<int> res;
     vector<thread> allThreads;
     while (cin >> a && cin >> b) {
-        res.push_back(dc.dist(a, b));
-        /*
+    
         allThreads.push_back(
-                    thread([&res,a,b,&dc](){
-                           res.push_back(dc.dist(a, b));
-                    })
-        );
-         */
+                             thread([&res,a,b,&dc](){
+            res.push_back(dc.dist(a, b));
+        })
+                             );
     }
-    //for(auto &t: allThreads) t.join();
+    /*
+    DistCalculator dc1(dc.actors,dc.movies);
+    DistCalculator dc2(dc.actors,dc.movies);
+    allThreads.push_back(thread(thread_task,ref(dc1)));
+    allThreads.push_back(thread(thread_task,ref(dc2)));
+    */
+     for(auto &t: allThreads) t.join();
     for(int ans:res) cout<<ans<<'\n';
     
     // flush output buffer

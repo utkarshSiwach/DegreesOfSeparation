@@ -68,6 +68,11 @@ DistCalculator::DistCalculator(std::string edgeListFile) {
     //cout<<"maxM "<<maxM<<", maxA "<<maxA<<", sizeA "<<actors.size()<<", sizeM "<<movies.size();
 }
 
+DistCalculator::DistCalculator(std::vector<std::vector<unsigned>> & actors, std::vector<std::vector<unsigned>> & movies) {
+    this->actors = actors;
+    this->movies = movies;
+}
+
 int64_t DistCalculator::dist(unsigned a, unsigned b)
 {
    // TODO: implement distance calculation here
@@ -79,29 +84,36 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     if(actors[a][0]==0)
         return -1;
     
-    uint64_t isDiscovered[1<<15];
-    
-    unsigned queue[NUM_ACTORS*2];
+    uint64_t isDiscovered[1<<15]={};
+    unsigned queue[2000000];
     unsigned currPos = 0;
-    unsigned queueSize=0;
-    queue[queueSize]=a;
-    queueSize++;
-    queue[queueSize]=NUM_ACTORS;
-    queueSize++;
+    unsigned qEnd=0;
+    queue[qEnd]=a;
+    qEnd++;
+    queue[qEnd]=NUM_ACTORS;
+    isDiscovered[(a)>>6] |= 1<<(a)&63;
     unsigned numOfZeroes = 1;
     bool found=false;
-    //vector<unsigned>::iterator actor,aMovie;
+    unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size;
+    unsigned rem,quo;
     do{
-        for(auto aMovie=actors[queue[currPos]].begin();aMovie!=actors[queue[currPos]].end();aMovie++) {
-            for(auto actor=movies[*aMovie].begin();actor!=movies[*aMovie].end();actor++){
-                if(*actor == b) {
+        mainActor = queue[currPos];
+        act_mov_size = actors[mainActor].size(); // number of movies of mainActor
+        for(i=0;i<act_mov_size;i++) {   // for all movies of mainActor
+            movie=actors[mainActor][i];
+            mov_act_size=movies[movie].size();
+            for(j=0;j<mov_act_size;j++){
+                actor=movies[movie][j];
+                if(actor == b) {
                     found = true;
                     goto aa;
                 }
-                if((isDiscovered[(*actor)>>6] & 1<<(*actor)&63) == 0){
-                    isDiscovered[(*actor)>>6] |= 1<<(*actor)&63;
-                    queue[queueSize]= *actor;
-                    queueSize++;
+                quo=(actor)>>6;
+                rem= actor&63;
+                if( (isDiscovered[quo] & (1<<rem)) == 0){
+                    isDiscovered[quo] |= (1<<rem);
+                    qEnd++;
+                    queue[qEnd]=actor;
                 }
             }
         }
@@ -109,14 +121,15 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
         if(found) {
             return numOfZeroes;
         }
-        if(queue[currPos+1]==NUM_ACTORS && queueSize>currPos+2) {
-            queue[queueSize]=NUM_ACTORS;
-            queueSize++;
+        
+        if(queue[currPos+1]==NUM_ACTORS && qEnd>currPos+1) {
+            qEnd++;
+            queue[qEnd]=NUM_ACTORS;
             numOfZeroes++;
         }
         if(queue[currPos+1]==NUM_ACTORS) currPos+=2;
         else currPos++;
-    }while(currPos<queueSize);
+    }while(currPos<qEnd);
     
     return -1;
 }
