@@ -143,7 +143,15 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
             qEnd++;
             queue[qEnd]=NUM_ACTORS;
             numOfZeroes++;
-            if(isFirst) goto switchTo2; else goto switchTo2a;
+            
+            for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
+                quo=(queue[i])>>6;
+                rem= queue[i]&63;
+                if( (isDiscovered2[quo] & (1<<rem)) != 0){
+                    return numOfZeroes+numOfZeroes2-2;
+                }
+            }
+            if(isFirst) { isFirst=false;goto switchTo2;} else goto switchTo2a;
         }
     switchTo1:
         if(queue[currPos+1]==NUM_ACTORS) currPos+=2;
@@ -153,7 +161,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     return -1;
     
 switchTo2:
-    if(isFirst) isFirst=false;
+
     do{
         mainActor = queue2[currPos2];
         act_mov_size = actors[mainActor].size(); // number of movies of mainActor
@@ -189,16 +197,10 @@ switchTo2:
                     quo=(queue2[i])>>6;
                     rem= queue2[i]&63;
                     if( (isDiscovered[quo] & (1<<rem)) != 0){
-                        return (numOfZeroes+numOfZeroes2)>>1;
+                        return numOfZeroes+numOfZeroes2-2;
                     }
                 }
-                for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
-                    quo=(queue[i])>>6;
-                    rem= queue[i]&63;
-                    if( (isDiscovered2[quo] & (1<<rem)) != 0){
-                        return (numOfZeroes+numOfZeroes2)>>1;
-                    }
-                }
+            
                 goto switchTo1;
             
         }
