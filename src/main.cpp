@@ -29,17 +29,19 @@ int main(int argc, char *argv[])
    // read queries from standard in and return distances
    //DistCalculator::Node a, b;
     unsigned a,b;
-    vector<int> res;
+    unsigned c=0;
+    int res[50];
     vector<thread> allThreads;
     //dc.dist(1, 6);
     
     while (cin >> a && cin >> b) {
     
         allThreads.push_back(
-                             thread([&res,a,b,&dc](){
-            res.push_back(dc.dist(a, b));
+                             thread([&res,a,b,&dc,c](){
+            res[c]=dc.dist(a, b);
         })
                              );
+        c++;
     }
     /*
     DistCalculator dc1(dc.actors,dc.movies);
@@ -48,7 +50,7 @@ int main(int argc, char *argv[])
     allThreads.push_back(thread(thread_task,ref(dc2)));
     */
      for(auto &t: allThreads) t.join();
-    for(int ans:res) cout<<ans<<'\n';
+    for(unsigned i=0;i<c;i++) cout<<res[i]<<'\n';
     // flush output buffer
     cout.flush();
 }
