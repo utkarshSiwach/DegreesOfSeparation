@@ -80,10 +80,10 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     if(actors[a][0]==0)
         return -1;
     
-    std::vector<bool> isDiscovered;
-    std::vector<bool> isDiscovered2;
-    isDiscovered.resize(NUM_ACTORS);
-    isDiscovered2.resize(NUM_ACTORS);
+    vector<uint64_t> isDiscovered;
+    vector<uint64_t> isDiscovered2;
+    isDiscovered.resize(1<<15);
+    isDiscovered2.resize(1<<15);
     std::vector<unsigned> queue;
     std::vector<unsigned> queue2;
     queue.resize(NUM_ACTORS);
@@ -93,7 +93,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     queue[qEnd]=a;
     qEnd++;
     queue[qEnd]=NUM_ACTORS;
-    isDiscovered[a]=true;
+    isDiscovered[(a)>>6] |= 1<<(a)&63;
     unsigned numOfZeroes = 1;
     
     unsigned currPos2 = 0;
@@ -101,12 +101,13 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     queue2[qEnd2]=b;
     qEnd2++;
     queue2[qEnd2]=NUM_ACTORS;
-    isDiscovered2[b] = true;
+    isDiscovered2[(b)>>6] |= 1<<(b)&63;
     unsigned numOfZeroes2 = 1;
     
     bool found=false;
     bool isFirst=true;
     unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size;
+    uint64_t rem,quo,t;
     
     do{
         mainActor = queue[currPos];
@@ -120,8 +121,12 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
                     found = true;
                     goto aa;
                 }
-                if(!isDiscovered[actor]){
-                    isDiscovered[actor]=true;
+                quo=(actor)>>6;
+                rem= actor&63;
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered[quo] & t) == 0){
+                    isDiscovered[quo] |= t;
                     qEnd++;
                     queue[qEnd]=actor;
                 }
@@ -138,7 +143,11 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
             numOfZeroes++;
             
             for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
-                if(isDiscovered2[queue[i]]){
+                quo=(queue[i])>>6;
+                rem= queue[i]&63;
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered2[quo] & t) != 0){
                     return numOfZeroes+numOfZeroes2-2;
                 }
             }
@@ -152,7 +161,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     return -1;
     
 switchTo2:
-
+    
     do{
         mainActor = queue2[currPos2];
         act_mov_size = actors[mainActor].size(); // number of movies of mainActor
@@ -165,8 +174,12 @@ switchTo2:
                     found = true;
                     goto cc;
                 }
-                if(!isDiscovered2[actor]){
-                    isDiscovered2[actor]=true;
+                quo=(actor)>>6;
+                rem= actor&63;
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered2[quo] & t) == 0){
+                    isDiscovered2[quo] |= t;
                     qEnd2++;
                     queue2[qEnd2]=actor;
                 }
@@ -182,13 +195,17 @@ switchTo2:
             queue2[qEnd2]=NUM_ACTORS;
             numOfZeroes2++;
             
-                for(int i=qEnd2-1;(queue2[i]!=NUM_ACTORS) && i>=0;i--){
-                    if(isDiscovered[queue2[i]]){
-                        return numOfZeroes+numOfZeroes2-2;
-                    }
+            for(int i=qEnd2-1;(queue2[i]!=NUM_ACTORS) && i>=0;i--){
+                quo=(queue2[i])>>6;
+                rem= queue2[i]&63;
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered[quo] & t) != 0){
+                    return numOfZeroes+numOfZeroes2-2;
                 }
+            }
             
-                goto switchTo1;
+            goto switchTo1;
             
         }
     switchTo2a:
