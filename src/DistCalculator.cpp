@@ -44,15 +44,16 @@ DistCalculator::DistCalculator(std::string edgeListFile) {
     
     actors.resize(NUM_ACTORS);
     movies.resize(NUM_MOVIES);
+    unsigned actorNum,movieNum;
     
     for(auto iter = cLine; iter < fileEnd;) {
         auto comma = findSymbol<','>(iter, fileEnd);
         if(comma>=fileEnd) break;
-        unsigned actorNum = 0;
+        actorNum=0;
         for(;iter!=comma;iter++)
             actorNum = actorNum*10 + (*iter)-'0';
         
-        unsigned movieNum = 0;
+        movieNum = 0;
         iter=comma+1;
         comma = findSymbol<'\n'>(iter,fileEnd);
         for(;iter!=comma;iter++)
@@ -68,11 +69,6 @@ DistCalculator::DistCalculator(std::string edgeListFile) {
     //cout<<"maxM "<<maxM<<", maxA "<<maxA<<", sizeA "<<actors.size()<<", sizeM "<<movies.size();
 }
 
-DistCalculator::DistCalculator(std::vector<std::vector<unsigned>> & actors, std::vector<std::vector<unsigned>> & movies) {
-    this->actors = actors;
-    this->movies = movies;
-}
-
 int64_t DistCalculator::dist(unsigned a, unsigned b)
 {
    // TODO: implement distance calculation here
@@ -84,10 +80,10 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     if(actors[a][0]==0)
         return -1;
     
-    vector<uint64_t> isDiscovered;
-    vector<uint64_t> isDiscovered2;
-    isDiscovered.resize(1<<15);
-    isDiscovered2.resize(1<<15);
+    std::vector<bool> isDiscovered;
+    std::vector<bool> isDiscovered2;
+    isDiscovered.resize(NUM_ACTORS);
+    isDiscovered2.resize(NUM_ACTORS);
     std::vector<unsigned> queue;
     std::vector<unsigned> queue2;
     queue.resize(NUM_ACTORS);
@@ -97,7 +93,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     queue[qEnd]=a;
     qEnd++;
     queue[qEnd]=NUM_ACTORS;
-    isDiscovered[(a)>>6] |= 1<<(a)&63;
+    isDiscovered[a]=true;
     unsigned numOfZeroes = 1;
     
     unsigned currPos2 = 0;
@@ -105,13 +101,12 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     queue2[qEnd2]=b;
     qEnd2++;
     queue2[qEnd2]=NUM_ACTORS;
-    isDiscovered2[(b)>>6] |= 1<<(b)&63;
+    isDiscovered2[b] = true;
     unsigned numOfZeroes2 = 1;
     
     bool found=false;
     bool isFirst=true;
     unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size;
-    uint64_t rem,quo,t;
     
     do{
         mainActor = queue[currPos];
@@ -125,12 +120,8 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
                     found = true;
                     goto aa;
                 }
-                quo=(actor)>>6;
-                rem= actor&63;
-                t=1;
-                t=t<<rem;
-                if( (isDiscovered[quo] & t) == 0){
-                    isDiscovered[quo] |= t;
+                if(!isDiscovered[actor]){
+                    isDiscovered[actor]=true;
                     qEnd++;
                     queue[qEnd]=actor;
                 }
@@ -147,11 +138,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
             numOfZeroes++;
             
             for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
-                quo=(queue[i])>>6;
-                rem= queue[i]&63;
-                t=1;
-                t=t<<rem;
-                if( (isDiscovered2[quo] & t) != 0){
+                if(isDiscovered2[queue[i]]){
                     return numOfZeroes+numOfZeroes2-2;
                 }
             }
@@ -178,12 +165,8 @@ switchTo2:
                     found = true;
                     goto cc;
                 }
-                quo=(actor)>>6;
-                rem= actor&63;
-                t=1;
-                t=t<<rem;
-                if( (isDiscovered2[quo] & t) == 0){
-                    isDiscovered2[quo] |= t;
+                if(!isDiscovered2[actor]){
+                    isDiscovered2[actor]=true;
                     qEnd2++;
                     queue2[qEnd2]=actor;
                 }
@@ -200,11 +183,7 @@ switchTo2:
             numOfZeroes2++;
             
                 for(int i=qEnd2-1;(queue2[i]!=NUM_ACTORS) && i>=0;i--){
-                    quo=(queue2[i])>>6;
-                    rem= queue2[i]&63;
-                    t=1;
-                    t=t<<rem;
-                    if( (isDiscovered[quo] & t) != 0){
+                    if(isDiscovered[queue2[i]]){
                         return numOfZeroes+numOfZeroes2-2;
                     }
                 }
