@@ -31,6 +31,8 @@ int main(int argc, char *argv[])
     unsigned a,b;
     vector<int> res;
     vector<thread> allThreads;
+    //dc.dist(1, 6);
+    
     while (cin >> a && cin >> b) {
     
         allThreads.push_back(
@@ -47,7 +49,6 @@ int main(int argc, char *argv[])
     */
      for(auto &t: allThreads) t.join();
     for(int ans:res) cout<<ans<<'\n';
-    
     // flush output buffer
     cout.flush();
 }
