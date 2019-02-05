@@ -111,7 +111,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     bool found=false;
     bool isFirst=true;
     unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size;
-    uint64_t rem,quo;
+    uint64_t rem,quo,t;
     
     do{
         mainActor = queue[currPos];
@@ -127,8 +127,10 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
                 }
                 quo=(actor)>>6;
                 rem= actor&63;
-                if( (isDiscovered[quo] & (1<<rem)) == 0){
-                    isDiscovered[quo] |= (1<<rem);
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered[quo] & t) == 0){
+                    isDiscovered[quo] |= t;
                     qEnd++;
                     queue[qEnd]=actor;
                 }
@@ -147,7 +149,9 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
             for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
                 quo=(queue[i])>>6;
                 rem= queue[i]&63;
-                if( (isDiscovered2[quo] & (1<<rem)) != 0){
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered2[quo] & t) != 0){
                     return numOfZeroes+numOfZeroes2-2;
                 }
             }
@@ -176,8 +180,10 @@ switchTo2:
                 }
                 quo=(actor)>>6;
                 rem= actor&63;
-                if( (isDiscovered2[quo] & (1<<rem)) == 0){
-                    isDiscovered2[quo] |= (1<<rem);
+                t=1;
+                t=t<<rem;
+                if( (isDiscovered2[quo] & t) == 0){
+                    isDiscovered2[quo] |= t;
                     qEnd2++;
                     queue2[qEnd2]=actor;
                 }
@@ -196,7 +202,9 @@ switchTo2:
                 for(int i=qEnd2-1;(queue2[i]!=NUM_ACTORS) && i>=0;i--){
                     quo=(queue2[i])>>6;
                     rem= queue2[i]&63;
-                    if( (isDiscovered[quo] & (1<<rem)) != 0){
+                    t=1;
+                    t=t<<rem;
+                    if( (isDiscovered[quo] & t) != 0){
                         return numOfZeroes+numOfZeroes2-2;
                     }
                 }
