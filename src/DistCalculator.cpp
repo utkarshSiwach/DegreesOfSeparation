@@ -189,14 +189,14 @@ switchTo2:
                     quo=(queue2[i])>>6;
                     rem= queue2[i]&63;
                     if( (isDiscovered[quo] & (1<<rem)) != 0){
-                        return numOfZeroes+numOfZeroes2-2;
+                        return (numOfZeroes+numOfZeroes2)>>1;
                     }
                 }
                 for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
                     quo=(queue[i])>>6;
                     rem= queue[i]&63;
                     if( (isDiscovered2[quo] & (1<<rem)) != 0){
-                        return (numOfZeroes+numOfZeroes2)<<1;
+                        return (numOfZeroes+numOfZeroes2)>>1;
                     }
                 }
                 goto switchTo1;
