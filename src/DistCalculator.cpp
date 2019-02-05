@@ -111,7 +111,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     bool found=false;
     bool isFirst=true;
     unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size;
-    unsigned rem,quo;
+    uint64_t rem,quo;
     
     do{
         mainActor = queue[currPos];
