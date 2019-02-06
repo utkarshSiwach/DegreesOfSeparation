@@ -103,7 +103,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
         return -1;
     if(actors[a][0]==0)
         return -1;
-    vector<thread> tPool1;
+    vector<thread> tPool1,tPool2;
     vector<uint64_t> isDiscovered;
     vector<uint64_t> isDiscovered2;
     isDiscovered.resize(1<<15);
@@ -130,8 +130,8 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     
     bool found=false;
     bool isFirst=true;
-    bool tResult=false;
-    bool isSafe=false;
+    bool tResult;
+    bool isSafe;
     unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size,diff,start,ending,iThread,nActiveThreads;
     uint64_t rem,quo,t,one=1;
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -139,9 +139,11 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     do{
         if(currPos!=0 && queue[currPos-1]==NUM_ACTORS && qEnd>2000){
             diff=(qEnd-currPos-2)/12;
-            start=prev0Pos+1;
-            prev0Pos=currPos-1;
+            start=currPos;
             nActiveThreads=12;
+            tResult=false;
+            isSafe=false;
+            tPool1.empty();
             for(unsigned i=0;i<12;i++){
                 //tPool1.push_back(thread(ts,queue,start+i*diff,start+(i+1)*diff,a,actors,movies,tResult,mutex,nActiveThreads));
                 start=start+i*diff;
@@ -240,6 +242,48 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
 switchTo2:
     
     do{
+        if(currPos2!=0 && queue2[currPos2-1]==NUM_ACTORS && qEnd2>2000){
+            diff=(qEnd2-currPos2-2)/12;
+            start=currPos2;
+            tResult=false;
+            isSafe=false;
+            tPool2.empty();
+            nActiveThreads=12;
+            for(unsigned i=0;i<12;i++){
+                //tPool1.push_back(thread(ts,queue,start+i*diff,start+(i+1)*diff,a,actors,movies,tResult,mutex,nActiveThreads));
+                start=start+i*diff;
+                ending=start+diff;
+                
+                auto& tmp = actors;
+                auto& tmp2=movies;
+                
+                tPool2.push_back(thread([& queue2,start,ending,b,&tmp,&tmp2,& tResult,& mutex,& nActiveThreads](){
+                    
+                    unsigned mainActor,movie,i,j,k,act_mov_size,mov_act_size;
+                    for(k=start;k<ending;k++) {
+                        mainActor = queue2[k];
+                        act_mov_size = tmp[mainActor].size(); // number of movies of mainActor
+                        for(i=0;i<act_mov_size;i++) {   // for all movies of mainActor
+                            movie=tmp[mainActor][i];
+                            mov_act_size=tmp2[movie].size();
+                            for(j=0;j<mov_act_size;j++)
+                                if(tmp2[movie][j] == b){
+                                    tResult |= true;
+                                    pthread_mutex_lock(&mutex);
+                                    nActiveThreads--;
+                                    pthread_mutex_unlock(&mutex);
+                                    return true;
+                                }
+                        }
+                    }
+                    pthread_mutex_lock(&mutex);
+                    nActiveThreads--;
+                    pthread_mutex_unlock(&mutex);
+                    return false;
+                }));
+                
+            }
+        }
         mainActor = queue2[currPos2];
         act_mov_size = actors[mainActor].size(); // number of movies of mainActor
         for(i=0;i<act_mov_size;i++) {   // for all movies of mainActor
@@ -263,9 +307,19 @@ switchTo2:
         }
     cc:
         if(found) {
+            for(iThread=0;iThread<tPool1.size();iThread++)
+                tPool2[iThread].join();
             return numOfZeroes2;
         }
-        
+        pthread_mutex_lock(&mutex);
+        if(nActiveThreads==0)isSafe=true;
+        pthread_mutex_unlock(&mutex);
+        if(isSafe) {
+            for(iThread=0;iThread<tPool2.size();iThread++)
+                tPool2[iThread].join();
+            if(tResult) return numOfZeroes2+1;
+            isSafe=false;
+        }
         if(queue2[currPos2+1]==NUM_ACTORS && qEnd2>currPos2+1) {
             qEnd2++;
             queue2[qEnd2]=NUM_ACTORS;
@@ -275,6 +329,8 @@ switchTo2:
                 quo=(queue2[i])>>6;
                 rem= queue2[i]&63;
                 if( (isDiscovered[quo] & one<<rem) != 0){
+                    for(iThread=0;iThread<tPool2.size();iThread++)
+                        tPool2[iThread].join();
                     return numOfZeroes+numOfZeroes2-2;
                 }
             }
