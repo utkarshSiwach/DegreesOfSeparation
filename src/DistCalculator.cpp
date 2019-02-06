@@ -138,11 +138,11 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     
     do{
         if(currPos!=0 && queue[currPos-1]==NUM_ACTORS && qEnd>2000){
-            diff=(qEnd-currPos-2)/4;
+            diff=(qEnd-currPos-2)/12;
             start=prev0Pos+1;
             prev0Pos=currPos-1;
-            nActiveThreads=4;
-            for(unsigned i=0;i<4;i++){
+            nActiveThreads=12;
+            for(unsigned i=0;i<12;i++){
                 //tPool1.push_back(thread(ts,queue,start+i*diff,start+(i+1)*diff,a,actors,movies,tResult,mutex,nActiveThreads));
                 start=start+i*diff;
                 ending=start+diff;
