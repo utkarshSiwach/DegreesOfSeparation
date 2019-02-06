@@ -3,7 +3,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <thread>
 #include "DistCalculator.hpp"
 
 //---------------------------------------------------------------------------

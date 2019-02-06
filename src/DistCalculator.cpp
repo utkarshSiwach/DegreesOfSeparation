@@ -69,6 +69,30 @@ DistCalculator::DistCalculator(std::string edgeListFile) {
     //cout<<"maxM "<<maxM<<", maxA "<<maxA<<", sizeA "<<actors.size()<<", sizeM "<<movies.size();
 }
 
+/*
+static inline bool ts(vector<unsigned>& queue,unsigned start,unsigned end, unsigned target, vector<vector<unsigned>>& actors,vector<vector<unsigned>>& movies,bool& tResult,pthread_mutex_t& mutex,unsigned& nThreads){
+    
+    unsigned mainActor,movie,i,j,k,act_mov_size,mov_act_size;
+    for(k=start;k<end;k++) {
+        mainActor = queue[k];
+        act_mov_size = actors[mainActor].size(); // number of movies of mainActor
+        for(i=0;i<act_mov_size;i++) {   // for all movies of mainActor
+            movie=actors[mainActor][i];
+            mov_act_size=movies[movie].size();
+            for(j=0;j<mov_act_size;j++)
+                if(movies[movie][j] == target){
+                    tResult |= true;
+                    pthread_mutex_lock(&mutex);
+                    nThreads--;
+                    pthread_mutex_unlock(&mutex);
+                    return true;
+                }
+        }
+    }
+    return tResult|false;
+}
+*/
+
 int64_t DistCalculator::dist(unsigned a, unsigned b)
 {
    // TODO: implement distance calculation here
@@ -79,7 +103,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
         return -1;
     if(actors[a][0]==0)
         return -1;
-    
+    vector<thread> tPool1;
     vector<uint64_t> isDiscovered;
     vector<uint64_t> isDiscovered2;
     isDiscovered.resize(1<<15);
@@ -88,7 +112,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     std::vector<unsigned> queue2;
     queue.resize(NUM_ACTORS);
     queue2.resize(NUM_ACTORS);
-    unsigned currPos = 0;
+    unsigned currPos = 0, prev0Pos=1;
     unsigned qEnd=0;
     queue[qEnd]=a;
     qEnd++;
@@ -96,7 +120,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     isDiscovered[(a)>>6] |= 1<<(a)&63;
     unsigned numOfZeroes = 1;
     
-    unsigned currPos2 = 0;
+    unsigned currPos2 = 0,prev0Pos2=1;
     unsigned qEnd2=0;
     queue2[qEnd2]=b;
     qEnd2++;
@@ -106,10 +130,53 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     
     bool found=false;
     bool isFirst=true;
-    unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size;
-    uint64_t rem,quo,t;
+    bool tResult=false;
+    bool isSafe=false;
+    unsigned actor,movie,i,j,act_mov_size,mainActor,mov_act_size,diff,start,ending,iThread,nActiveThreads;
+    uint64_t rem,quo,t,one=1;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     
     do{
+        if(currPos!=0 && queue[currPos-1]==NUM_ACTORS && qEnd>16){
+            diff=(qEnd-currPos-2)/4;
+            start=prev0Pos+1;
+            prev0Pos=currPos-1;
+            nActiveThreads=4;
+            for(unsigned i=0;i<4;i++){
+                //tPool1.push_back(thread(ts,queue,start+i*diff,start+(i+1)*diff,a,actors,movies,tResult,mutex,nActiveThreads));
+                start=start+i*diff;
+                ending=start+diff;
+                
+                auto& tmp = actors;
+                auto& tmp2=movies;
+                
+                tPool1.push_back(thread([& queue,start,ending,a,&tmp,&tmp2,& tResult,& mutex,& nActiveThreads](){
+                    
+                    unsigned mainActor,movie,i,j,k,act_mov_size,mov_act_size;
+                    for(k=start;k<ending;k++) {
+                        mainActor = queue[k];
+                        act_mov_size = tmp[mainActor].size(); // number of movies of mainActor
+                        for(i=0;i<act_mov_size;i++) {   // for all movies of mainActor
+                            movie=tmp[mainActor][i];
+                            mov_act_size=tmp2[movie].size();
+                            for(j=0;j<mov_act_size;j++)
+                                if(tmp2[movie][j] == a){
+                                    tResult |= true;
+                                    pthread_mutex_lock(&mutex);
+                                    nActiveThreads--;
+                                    pthread_mutex_unlock(&mutex);
+                                    return true;
+                                }
+                        }
+                    }
+                    pthread_mutex_lock(&mutex);
+                    nActiveThreads--;
+                    pthread_mutex_unlock(&mutex);
+                    return false;
+                }));
+                 
+            }
+        }
         mainActor = queue[currPos];
         act_mov_size = actors[mainActor].size(); // number of movies of mainActor
         for(i=0;i<act_mov_size;i++) {   // for all movies of mainActor
@@ -123,8 +190,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
                 }
                 quo=(actor)>>6;
                 rem= actor&63;
-                t=1;
-                t=t<<rem;
+                t=one<<rem;
                 if( (isDiscovered[quo] & t) == 0){
                     isDiscovered[quo] |= t;
                     qEnd++;
@@ -134,7 +200,19 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
         }
     aa:
         if(found) {
+            for(iThread=0;iThread<tPool1.size();iThread++)
+                tPool1[iThread].join();
             return numOfZeroes;
+        }
+        
+        pthread_mutex_lock(&mutex);
+        if(nActiveThreads==0)isSafe=true;
+        pthread_mutex_unlock(&mutex);
+        if(isSafe) {
+            for(iThread=0;iThread<tPool1.size();iThread++)
+                tPool1[iThread].join();
+            if(tResult) return numOfZeroes+1;
+            isSafe=false;
         }
         
         if(queue[currPos+1]==NUM_ACTORS && qEnd>currPos+1) {
@@ -145,9 +223,9 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
             for(int i=qEnd-1;(queue[i]!=NUM_ACTORS) && i>=0;i--){
                 quo=(queue[i])>>6;
                 rem= queue[i]&63;
-                t=1;
-                t=t<<rem;
-                if( (isDiscovered2[quo] & t) != 0){
+                if( (isDiscovered2[quo] & one<<rem) != 0){
+                    for(iThread=0;iThread<tPool1.size();iThread++)
+                        tPool1[iThread].join();
                     return numOfZeroes+numOfZeroes2-2;
                 }
             }
@@ -157,7 +235,6 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
         if(queue[currPos+1]==NUM_ACTORS) currPos+=2;
         else currPos++;
     }while(currPos<qEnd);
-    
     return -1;
     
 switchTo2:
@@ -176,8 +253,7 @@ switchTo2:
                 }
                 quo=(actor)>>6;
                 rem= actor&63;
-                t=1;
-                t=t<<rem;
+                t=one<<rem;
                 if( (isDiscovered2[quo] & t) == 0){
                     isDiscovered2[quo] |= t;
                     qEnd2++;
@@ -198,9 +274,7 @@ switchTo2:
             for(int i=qEnd2-1;(queue2[i]!=NUM_ACTORS) && i>=0;i--){
                 quo=(queue2[i])>>6;
                 rem= queue2[i]&63;
-                t=1;
-                t=t<<rem;
-                if( (isDiscovered[quo] & t) != 0){
+                if( (isDiscovered[quo] & one<<rem) != 0){
                     return numOfZeroes+numOfZeroes2-2;
                 }
             }

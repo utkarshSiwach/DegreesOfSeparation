@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <thread>
 class DistCalculator{
 public:
     static const unsigned NUM_ACTORS = 2000000;
