@@ -137,7 +137,7 @@ int64_t DistCalculator::dist(unsigned a, unsigned b)
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
     
     do{
-        if(currPos!=0 && queue[currPos-1]==NUM_ACTORS && qEnd>16){
+        if(currPos!=0 && queue[currPos-1]==NUM_ACTORS && qEnd>2000){
             diff=(qEnd-currPos-2)/4;
             start=prev0Pos+1;
             prev0Pos=currPos-1;
