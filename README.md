@@ -18,6 +18,9 @@ Number of records:   17,316,773
 
 File size:             250.4 MB
 
+Benchmark:
+25 random queries completed in 13 seconds on 1.6 GHz Intel 8th-gen dual-core i5 processor
+
 Solution:
 The algorithm used is Bidirectional Breadth First Search as it converges a lot faster than simple BFS.
 Threading is used to leverage multiple cores. This not only executes multiple queries in parallel but also
